@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+*.tgz
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AI Memory Bridge specific
+# Don't ignore .ai-memory/ - this should be committed for team sharing
+# But ignore local backups
+.ai-memory/backup/
+*.backup
+
+# Dashboard generated files (can be regenerated)
+ai-memory-dashboard.html

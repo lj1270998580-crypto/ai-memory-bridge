@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "loop_detection": {
+    "exact_repeat_threshold": 3,
+    "error_loop_threshold": 3,
+    "sequence_loop_threshold": 2,
+    "token_burn_window": 5,
+    "max_session_history": 50
+  },
+  "experience": {
+    "auto_extract": true,
+    "min_confidence_for_auto_store": 0.7,
+    "max_experiences_per_project": 500,
+    "max_experiences_global": 2000,
+    "promote_threshold": {
+      "min_projects": 2,
+      "min_confidence": 0.8,
+      "min_frequency": 2
+    },
+    "confidence_decay_days": 90,
+    "cleanup_deprecated_after_days": 365
+  },
+  "context_injection": {
+    "max_experiences_per_query": 3,
+    "min_relevance_score": 0.6,
+    "max_context_tokens": 800
+  },
+  "storage": {
+    "project_dir_name": ".ai-memory",
+    "global_dir": "~/.claude/ai-memory",
+    "enable_git_sync": true
+  },
+  "privacy": {
+    "scrub_secrets": true,
+    "scrub_patterns": [
+      "(?i)(api[_-]?key|token|secret|password|authorization|credential)",
+      "(?i)(bearer\\s+[a-z0-9\\-_.]+)",
+      "(?i)(sk-[a-z0-9]{20,})"
+    ]
+  }
+}
