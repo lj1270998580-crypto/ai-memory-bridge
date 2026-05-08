@@ -9,6 +9,8 @@ import { detectProject } from '../lib/detect-project.mjs';
 import { classifyOutcome, determineScope } from '../lib/outcome-classifier.mjs';
 import { saveExperience, extractError } from '../lib/experience-store.mjs';
 import { recordExecution } from '../lib/loop-detector.mjs';
+import { recordToolExecution } from '../lib/task-detector.mjs';
+import { compactMemory } from '../lib/compaction.mjs';
 
 async function main() {
   try {
@@ -31,7 +33,14 @@ async function main() {
     // 2. Record in session history (for loop detection)
     recordExecution(tool_name, tool_input, tool_output, outcome);
     
-    // 3. Auto-extract experience if worth recording
+    // 3. Detect task completion
+    const taskCompletion = recordToolExecution(tool_name, tool_input, tool_output, outcome.status);
+    
+    if (taskCompletion && process.env.AMB_DEBUG) {
+      console.error(`[AMB] Task completed: ${taskCompletion.type} (${taskCompletion.reason})`);
+    }
+    
+    // 4. Auto-extract experience if worth recording
     if (outcome.is_worth_recording) {
       const project = detectProject();
       
@@ -68,6 +77,52 @@ async function main() {
       // Optional: output debug info
       if (process.env.AMB_DEBUG) {
         console.error(`[AMB] Learned: ${saved.id} (${saved.type}, ${scope})`);
+      }
+    }
+    
+    // 5. Save task completion as experience (if task completed)
+    if (taskCompletion && taskCompletion.summary) {
+      const taskExperience = {
+        type: 'task',
+        trigger: {
+          tool: 'session',
+          action_pattern: `task_completion_${taskCompletion.type}`,
+          context_pattern: 'auto-detected'
+        },
+        outcome: {
+          status: 'success',
+          description: `Task completed: ${taskCompletion.reason}`,
+          consequences: [
+            `Duration: ${Math.round(taskCompletion.summary.duration_ms / 1000)}s`,
+            `Tools used: ${Object.entries(taskCompletion.summary.tools_used).map(([k,v]) => `${k}(${v})`).join(', ')}`,
+            `Success rate: ${(taskCompletion.summary.success_rate * 100).toFixed(1)}%`
+          ]
+        },
+        lesson: {
+          what_worked: 'Task completed successfully',
+          what_failed: '',
+          better_approach: ''
+        },
+        metadata: {
+          source_session: session_id || '',
+          tags: ['task', 'completion', taskCompletion.type]
+        }
+      };
+      
+      saveExperience(taskExperience, 'project');
+      
+      // Auto-compact after task completion (if enabled)
+      if (process.env.AMB_AUTO_COMPACT === 'true') {
+        try {
+          compactMemory('project', false);
+          if (process.env.AMB_DEBUG) {
+            console.error('[AMB] Auto-compacted project memory after task completion');
+          }
+        } catch (compactErr) {
+          if (process.env.AMB_DEBUG) {
+            console.error('[AMB] Auto-compact error:', compactErr.message);
+          }
+        }
       }
     }
   } catch (err) {

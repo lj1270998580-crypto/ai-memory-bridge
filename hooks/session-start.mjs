@@ -7,6 +7,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { detectProject, getStoragePaths } from '../lib/detect-project.mjs';
+import { getCompactionStats } from '../lib/compaction.mjs';
 
 function main() {
   try {
@@ -118,7 +119,31 @@ function main() {
       }
     }
     
-    // 4. Build output
+    // 4. Check if compaction is needed
+    try {
+      const projectStats = getCompactionStats('project');
+      const globalStats = getCompactionStats('global');
+      
+      if (projectStats.needs_compaction || globalStats.needs_compaction) {
+        contextParts.push('─── Maintenance ───');
+        
+        if (projectStats.needs_compaction) {
+          contextParts.push(`  🧹 Project memory needs compaction (${projectStats.active} experiences)`);
+          contextParts.push(`    Run: /amb:compact`);
+        }
+        
+        if (globalStats.needs_compaction) {
+          contextParts.push(`  🧹 Global memory needs compaction (${globalStats.active} experiences)`);
+          contextParts.push(`    Run: /amb:compact --global`);
+        }
+        
+        contextParts.push('');
+      }
+    } catch {
+      // Ignore compaction check errors
+    }
+    
+    // 5. Build output
     if (contextParts.length > 0) {
       const fullContext = contextParts.join('\n');
       

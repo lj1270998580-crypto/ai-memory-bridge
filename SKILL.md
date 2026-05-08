@@ -106,6 +106,10 @@ C. 手动检查并升级冲突依赖
 | `/amb:dashboard` | 生成可视化仪表盘 HTML |
 | `/amb:rules` | 将经验转换为 Skill 规则文件 |
 | `/amb:ci-setup` | 生成 CI/CD 集成配置 |
+| `/amb:compact` | 整理、去重、升级记忆 |
+| `/amb:compact --dry-run` | 预览整理效果 |
+| `/amb:compact --global` | 整理全局记忆 |
+| `/amb:compact --both` | 整理项目+全局记忆 |
 
 ## Rules
 
@@ -118,16 +122,25 @@ C. 手动检查并升级冲突依赖
    - 自动分类结果（成功/失败/踩坑/新模式）
    - 值得记录时自动生成经验卡片
    - 基于技术栈判断存储范围（project vs global）
+   - **检测任务完成信号**（git commit、连续成功、用户说"done"）
+   - **任务完成后自动保存**任务摘要到经验库
 
 3. **SessionStart 时**：
    - 自动加载项目 DNA
    - 注入项目约束和活跃痛点
    - 加载开发者画像
+   - **检查记忆是否需要整理**（超过7天未整理时提醒）
 
 4. **用户交互时**：
    - 阻断后必须等待用户明确输入才能继续
    - 经验注入使用非侵入式格式（💡 提示而非强制）
    - 所有自动记录的经验用户可事后 review/forget
+
+5. **自动整理**（可通过环境变量启用）：
+   - 设置 `AMB_AUTO_COMPACT=true` 启用任务完成后自动整理
+   - 合并相似经验（频率+1，置信度提升）
+   - 高频/高置信度经验自动提升为全局记忆
+   - 老旧/低置信度经验自动归档
 
 ## Quick Start
 
@@ -164,7 +177,56 @@ Today's new learnings: 3
 /amb:learn "使用 Prisma migrate dev 时要先确保数据库容器在运行"
 ```
 
-### 4. 注册 Hooks
+### 4. 任务完成自动保存
+
+AI Memory Bridge 会自动检测任务完成：
+
+**检测信号**：
+- `git commit` / `git push` / `npm publish` 等边界操作
+- 连续 5+ 次成功（且包含 3+ 次有意义操作）
+- 用户说 "done"、"完成"、"thanks" 等关键词
+- 会话超过 10 分钟且成功率 > 80%
+
+**自动保存**：
+```bash
+# 任务完成后自动生成经验卡片
+[AMB] Task completed: boundary_tool (Bash with git\s+commit)
+[AMB] Learned: exp_task_xxx (task, project)
+```
+
+### 5. 记忆整理
+
+手动整理记忆：
+
+```bash
+# 预览整理效果（不实际修改）
+/amb:compact --dry-run
+
+# 整理项目记忆
+/amb:compact
+
+# 整理全局记忆
+/amb:compact --global
+
+# 同时整理两者
+/amb:compact --both
+```
+
+**整理内容**：
+- 🔗 合并相似经验（去重）
+- ⬆️ 高频经验自动提升为全局记忆
+- 📦 归档老旧经验
+- 🗑️ 清理废弃/低置信度经验
+
+**自动整理**（可选）：
+```bash
+# 在 ~/.claude/settings.json 中添加环境变量
+export AMB_AUTO_COMPACT=true
+```
+
+启用后，每次任务完成会自动触发整理。
+
+### 6. 注册 Hooks
 
 编辑 `~/.claude/settings.json`：
 
@@ -221,7 +283,8 @@ Today's new learnings: 3
 │   ├── forget.mjs
 │   ├── loop.mjs
 │   ├── promote.mjs
-│   └── profile.mjs
+│   ├── profile.mjs
+│   └── compact.mjs
 ├── hooks/
 │   ├── pre-tool.mjs
 │   ├── post-tool.mjs
@@ -231,7 +294,9 @@ Today's new learnings: 3
     ├── experience-store.mjs
     ├── outcome-classifier.mjs
     ├── loop-detector.mjs
-    └── context-builder.mjs
+    ├── context-builder.mjs
+    ├── task-detector.mjs
+    └── compaction.mjs
 
 ~/.claude/ai-memory/
 ├── config.json
